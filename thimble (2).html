@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>থিম্বলস ক্যামেরা ট্র্যাকার</title>
+<style>
+    :root { --bg: #0b1120; --panel-bg: #111827; --text: #f3f4f6; --accent: #10b981; --danger: #ef4444; --gold: #fbbf24; }
+    body { margin: 0; font-family: -apple-system, sans-serif; background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; background-image: radial-gradient(circle at 50% 50%, #1e293b 0%, #0b1120 70%); }
+    .header { width: 100%; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(17, 24, 39, 0.8); border-bottom: 1px solid #1f2937; box-sizing: border-box; }
+    .header-left { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 14px; }
+    .header-left .icon { background: #064e3b; color: var(--accent); padding: 4px; border-radius: 6px; display: flex; }
+    .header-right { background: #064e3b; color: var(--accent); padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: bold; border: 1px solid var(--accent); }
+    .status-panels { display: flex; gap: 10px; margin-top: 10px; width: 90%; }
+    .s-panel { flex: 1; background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px; font-weight: bold; }
+    .s-panel.fair { border-color: var(--accent); color: var(--accent); background: rgba(16, 185, 129, 0.1); }
+    .s-panel.rig { border-color: var(--gold); color: var(--gold); background: rgba(251, 191, 36, 0.1); }
+    .game-area { flex: 1; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; }
+    
+    .cups-container { display: flex; gap: 15px; margin-bottom: 30px; }
+    
+    /* ট্রান্সপারেন্ট কাপ ডিজাইন */
+    .cup { width: 70px; height: 90px; position: relative; cursor: pointer; transition: transform 0.3s ease, filter 0.3s; }
+    
+    .cup-shape { 
+        width: 100%; 
+        height: 100%; 
+        /* কাঁচের মতো ট্রান্সপারেন্ট গ্রেডিয়েন্ট */
+        background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.1) 40%, rgba(255,255,255,0.2) 50%, rgba(0,0,0,0.2) 100%); 
+        border-radius: 40px 40px 10px 10px; 
+        position: relative; 
+        /* গ্লাস ইফেক্টের জন্য শ্যাডো */
+        box-shadow: inset -5px 0 10px rgba(255,255,255,0.3), inset 5px 0 10px rgba(255,255,255,0.3), 0 10px 15px rgba(0,0,0,0.4); 
+        border: 2px solid rgba(255,255,255,0.4); 
+        border-bottom: 2px solid rgba(255,255,255,0.6);
+        backdrop-filter: blur(2px); /* হালকা ব্লার */
+        overflow: hidden; 
+    }
+    
+    /* ভেতরের প্যাটার্ন (যদিও এটা কম দেখা যাবে) */
+    .cup-shape::before { 
+        content: ''; 
+        position: absolute; 
+        top: 20%; 
+        left: 0; 
+        width: 100%; 
+        height: 60%; 
+        background-image: radial-gradient(circle at 50% 50%, transparent 3px, rgba(255,255,255,0.3) 4px); 
+        background-size: 15px 15px; 
+        opacity: 0.3; 
+    }
+    
+    .cup-base { 
+        position: absolute; 
+        bottom: 0; 
+        left: 5%; 
+        width: 90%; 
+        height: 10px; 
+        background: linear-gradient(to bottom, rgba(255,255,255,0.5), rgba(0,0,0,0.3)); 
+        border-radius: 50%; 
+        border-top: 1px solid rgba(255,255,255,0.6); 
+    }
+    
+    .cup-number { 
+        position: absolute; 
+        bottom: -25px; 
+        left: 50%; 
+        transform: translateX(-50%); 
+        background: #1f2937; 
+        color: #9ca3af; 
+        padding: 2px 8px; 
+        border-radius: 12px; 
+        font-size: 10px; 
+        font-weight: bold; 
+        border: 1px solid #374151; 
+    }
+    
+    /* জেতার পর কাপের রঙ */
+    .cup.win .cup-shape { 
+        background: linear-gradient(135deg, rgba(52, 211, 153, 0.6) 0%, rgba(5, 150, 105, 0.4) 50%, rgba(4, 120, 87, 0.6) 100%); 
+        box-shadow: 0 0 20px var(--accent); 
+        border-color: var(--accent);
+    }
+    
+    .cup.win .cup-number { border-color: var(--accent); color: var(--accent); background: rgba(16,185,129,0.2); }
+    .cup.lose { opacity: 0.3; filter: grayscale(1); }
+    
+    /* বল (স্পষ্টভাবে বোঝার জন্য) */
+    .cup .ball { 
+        position: absolute; 
+        bottom: 15px; /* কাপের একটু উপরে যাতে বোঝা যায় ভেতরে আছে */
+        left: 50%; 
+        transform: translateX(-50%); 
+        width: 24px; 
+        height: 24px; 
+        background: radial-gradient(circle at 30% 30%, #ffffff, #fbbf24); /* সোনালী/সাদা বল */
+        border-radius: 50%; 
+        box-shadow: 0 0 10px rgba(251, 191, 36, 0.8), 0 3px 8px rgba(0,0,0,0.5); 
+        display: none; 
+        z-index: 10; /* কাপের ভেতরে দেখানোর জন্য */
+    }
+    
+    .cup .ball.show { display: block; }
+    .cup.win .ball { display: block; }
+
+    #msg { position: absolute; bottom: 60px; font-size: 12px; font-weight: bold; color: var(--accent); text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    .stats-panel { width: 90%; background: #111827; border: 1px solid #1f2937; border-radius: 10px; padding: 10px; margin-bottom: 10px; box-sizing: border-box; }
+    .stats-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
+    .stats-row span:first-child { color: #9ca3af; }
+    .stats-row span:last-child { font-weight: bold; }
+</style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div class="icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg></div>
+            থিম্বলস ট্র্যাকার
+        </div>
+        <div class="header-right">LIVE</div>
+    </div>
+
+    <div class="status-panels">
+        <div class="s-panel fair"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg> ফেয়ার আরএনজি</div>
+        <div class="s-panel rig"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L1 21h22L12 2z"/></svg> রিগড ডেমো</div>
+    </div>
+
+    <div class="game-area">
+        <div class="cups-container" id="cups">
+            <!-- কাপ ১ -->
+            <div class="cup">
+                <div class="cup-shape"></div>
+                <div class="cup-base"></div>
+                <div class="ball"></div>
+                <div class="cup-number">#1</div>
+            </div>
+            <!-- কাপ ২ -->
+            <div class="cup">
+                <div class="cup-shape"></div>
+                <div class="cup-base"></div>
+                <div class="ball"></div>
+                <div class="cup-number">#2</div>
+            </div>
+            <!-- কাপ ৩ -->
+            <div class="cup">
+                <div class="cup-shape"></div>
+                <div class="cup-base"></div>
+                <div class="ball"></div>
+                <div class="cup-number">#3</div>
+            </div>
+        </div>
+        <div id="msg">ডেটার অপেক্ষা করছি...</div>
+    </div>
+
+    <div class="stats-panel">
+        <div class="stats-row"><span>জয়/হার</span><span><span id="w" style="color:var(--accent)">0</span> / <span id="l" style="color:var(--danger)">0</span></span></div>
+        <div class="stats-row"><span>ইতিহাস</span><span id="hist" style="font-size:10px; letter-spacing:1px;">-</span></div>
+    </div>
+
+<script>
+    let wins = 0, losses = 0, hist = [];
+    const msgEl = document.getElementById('msg');
+    const cups = document.querySelectorAll('.cup');
+    const balls = document.querySelectorAll('.ball');
+
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'thimble_data') {
+            processServerData(event.data.payload);
+        }
+    });
+
+    function processServerData(data) {
+        if (data.status === 'active' && data.canPick === true) {
+            cups.forEach(c => c.classList.remove('win', 'lose'));
+            balls.forEach(b => b.classList.remove('show')); // বল লুকানো
+            msgEl.textContent = 'গেমে কাপ বেছে নিন...';
+            msgEl.style.color = 'var(--accent)';
+        }
+        
+        if (data.steps && data.steps.length > 0) {
+            let step = data.steps[data.steps.length - 1];
+            if (step.layout) {
+                let hit = step.hit;
+                let layouts = step.layout; 
+                let pickIndex = step.pick; 
+                
+                hit ? wins++ : losses++;
+                hist.push(hit ? '✅' : '❌');
+                if (hist.length > 5) hist.shift();
+                
+                cups.forEach((cup, i) => {
+                    if (layouts.includes(i)) {
+                        cup.classList.add('win');
+                        // যেখানে জেম আছে সেখানে বল দেখাবে
+                        balls[i].classList.add('show'); 
+                    } else if (i === pickIndex && !hit) {
+                        cup.classList.add('lose');
+                    }
+                });
+                
+                msgEl.textContent = hit ? '🎯 আপনি জিতেছেন!' : '❌ আপনি হেরেছেন!';
+                msgEl.style.color = hit ? 'var(--accent)' : 'var(--danger)';
+                
+                document.getElementById('w').textContent = wins;
+                document.getElementById('l').textContent = losses;
+                document.getElementById('hist').textContent = hist.join(' ');
+            }
+        }
+    }
+</script>
+</body>
+</html>
